@@ -5,55 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wall Street Intelligence Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%); color: #e0e0e0; min-height: 100vh; }
         .header { background: linear-gradient(90deg, #1e3a5f 0%, #2d5a87 100%); padding: 20px; text-align: center; border-bottom: 3px solid #ffd700; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .header h1 { font-size: 2.2em; color: #ffd700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); letter-spacing: 2px; }
-        .header p { color: #a0c4e8; margin-top: 5px; font-size: 0.95em; }
-        .timestamp { text-align: center; padding: 10px; background: rgba(255,215,0,0.1); border-bottom: 1px solid #333; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: linear-gradient(145deg, #1e2937 0%, #162029 100%); border-radius: 12px; padding: 20px; border: 1px solid #2d3a4a; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        .card-header { display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #2d3a4a; padding-bottom: 10px; }
-        .card-icon { font-size: 1.8em; margin-right: 12px; }
+        .card { background: linear-gradient(145deg, #1e2937 0%, #162029 100%); border-radius: 12px; padding: 20px; border: 1px solid #2d3a4a; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin: 20px; }
         .card-title { font-size: 1.2em; font-weight: 600; color: #ffd700; }
-        .risk-meter { height: 40px; background: linear-gradient(90deg, #22c55e 0%, #eab308 50%, #ef4444 100%); border-radius: 20px; position: relative; margin: 20px 0; overflow: hidden; }
-        .risk-indicator { position: absolute; top: -5px; width: 6px; height: 50px; background: white; border-radius: 3px; box-shadow: 0 0 10px rgba(255,255,255,0.8); transition: left 0.5s ease; }
-        .risk-labels { display: flex; justify-content: space-between; font-size: 0.85em; color: #8899aa; margin-top: 5px; }
-        .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #2d3a4a; }
-        .metric-name { font-weight: 500; color: #a0c4e8; }
-        .metric-value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1em; }
+        .metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2d3a4a; }
         .positive { color: #22c55e; } .negative { color: #ef4444; } .neutral { color: #eab308; }
-        .alert-box { background: linear-gradient(145deg, #451a1a 0%, #3d1515 100%); border-left: 4px solid #ef4444; padding: 15px; border-radius: 8px; margin-top: 15px; }
-        .alert-title { color: #fca5a5; font-weight: bold; margin-bottom: 5px; }
-        .news-item { padding: 12px; border-left: 3px solid #3b82f6; background: rgba(59,130,246,0.1); margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+        .risk-meter { height: 40px; background: linear-gradient(90deg, #22c55e 0%, #eab308 50%, #ef4444 100%); border-radius: 20px; position: relative; margin: 20px 0; }
+        .risk-indicator { position: absolute; top: -5px; width: 6px; height: 50px; background: white; border-radius: 3px; left: 38%; box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .price { font-size: 1.5em; font-weight: bold; color: #ffd700; text-align: center; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🏛️ WALL STREET INTELLIGENCE</h1>
-        <p>Professional Market Analysis & Risk Assessment Dashboard</p>
+        <p style="color: #a0c4e8;">Professional Market Analysis Dashboard</p>
     </div>
     
-    <div class="timestamp">
-        <span id="current-time">Lade Zeit...</span>
-    </div>
-
-    <div class="container">
-        <div class="card full-width">
-            <div class="card-header">
-                <span class="card-icon">⚠️</span>
-                <span class="card-title">KORREKTUR-WAHRSCHEINLICHKEITSMETER</span>
-            </div>
-            <div class="risk-meter">
-                <div class="risk-indicator" id="correction-indicator" style="left: 35%;"></div>
-            </div>
-            <div class="risk-labels">
-                <span>Niedrig (0-20%)</span><span>Mäßig (20-40%)</span><span>Erhöht (40-60%)</span><span>Hoch (60-80%)</span><span>Kritisch (80-100%)</span>
+    <div class="grid">
+        <div class="card">
+            <div class="card-title">⚠️ KORREKTUR-WAHRSCHEINLICHKEIT</div>
+            <div class="risk-meter"><div class="risk-indicator"></div></div>
+            <p style="text-align: center; color: #eab308; font-size: 1.3em;"><strong>MODERAT (38%)</strong></p>
+            <p style="margin-top: 10px; color: #8899aa; font-size: 0.9em;">
+                Gemischte Signale: Starker Tech vs. Geopolitik-Risiken.<br>
+                Empfohlen: 60% Long, 25% Cash, 15% Gold/Oil Hedge.
+            </p>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">📊 KERN-INDIKATOREN</div>
+            <div class="metric"><span>VIX (Volatilität)</span><span class="neutral">16.42</span></div>
+            <div class="metric"><span>DXY (US Dollar)</span><span class="positive">103.85</span></div>
+            <div class="metric"><span>10Y Treasury</span><span class="neutral">4.32%</span></div>
+            <div class="metric"><span>Yield Spread (10Y-2Y)</span><span class="negative">-0.42%</span></div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">🥇 ROHSTOFFE</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                <div><div style="color: #8899aa;">Gold</div><div class="price">$2,842</div><div class="positive">+1.2%</div></div>
+                <div><div style="color: #8899aa;">Silber</div><div class="price">$31.75</div><div class="positive">+2.1%</div></div>
+                <div><div style="color: #8899aaa;">Öl (WTI)</div><div class="price">$72.40</div><div class="negative">-0.8%</div></div>
             </div>
         </div>
+        
+        <div class="card">
+            <div class="card-title">🌍 GEOPOLITISCHES RISIKO</div>
+            <p style="text-align: center; font-size: 2em; color: #eab308; font-weight: bold;">6.2/10</p>
+            <p style="text-align: center; color: #8899aa;">Erhöhtes Risiko</p>
+            <div class="metric"><span>Ukraine</span><span class="neutral">Stabil</span></div>
+            <div class="metric"><span>Nahost</span><span class="negative">Hoch</span></div>
+            <div class="metric"><span>Taiwan/China</span><span class="neutral">Beobachten</span></div>
+        </div>
+    </div>
+    
+    <div style="text-align: center; padding: 20px; color: #6b7280;">
+        <p>⚠️ Nur zu Informationszwecken. Keine Anlageberatung.</p>
+        <p>Zuletzt aktualisiert: 03.03.2026</p>
     </div>
 </body>
 </html>
