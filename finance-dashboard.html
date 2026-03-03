@@ -3,70 +3,311 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wall Street Intelligence Dashboard</title>
+    <title>Wall Street Intelligence LIVE</title>
+    <meta http-equiv="refresh" content="300">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f1419 0%, #1a2332 100%); color: #e0e0e0; min-height: 100vh; }
-        .header { background: linear-gradient(90deg, #1e3a5f 0%, #2d5a87 100%); padding: 20px; text-align: center; border-bottom: 3px solid #ffd700; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        .header h1 { font-size: 2.2em; color: #ffd700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); letter-spacing: 2px; }
-        .card { background: linear-gradient(145deg, #1e2937 0%, #162029 100%); border-radius: 12px; padding: 20px; border: 1px solid #2d3a4a; box-shadow: 0 8px 32px rgba(0,0,0,0.3); margin: 20px; }
-        .card-title { font-size: 1.2em; font-weight: 600; color: #ffd700; }
-        .metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2d3a4a; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0a0e14 0%, #121820 100%); 
+            color: #e0e0e0; 
+            min-height: 100vh; 
+        }
+        .header { 
+            background: linear-gradient(90deg, #1e3a5f 0%, #2d5a87 100%); 
+            padding: 20px; 
+            text-align: center; 
+            border-bottom: 3px solid #ffd700; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); 
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 2em; color: #ffd700; letter-spacing: 2px; }
+        .live-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .timestamp { text-align: center; padding: 10px; background: rgba(255,215,0,0.1); font-size: 0.9em; }
+        .countdown { color: #ffd700; font-weight: bold; }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { 
+            background: linear-gradient(145deg, #1e2937 0%, #162029 100%); 
+            border-radius: 12px; 
+            padding: 20px; 
+            border: 1px solid #2d3a4a; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); 
+        }
+        .card-title { font-size: 1.2em; font-weight: 600; color: #ffd700; margin-bottom: 15px; }
+        
+        .metric { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #2d3a4a; }
+        .metric:last-child { border-bottom: none; }
         .positive { color: #22c55e; } .negative { color: #ef4444; } .neutral { color: #eab308; }
-        .risk-meter { height: 40px; background: linear-gradient(90deg, #22c55e 0%, #eab308 50%, #ef4444 100%); border-radius: 20px; position: relative; margin: 20px 0; }
-        .risk-indicator { position: absolute; top: -5px; width: 6px; height: 50px; background: white; border-radius: 3px; left: 38%; box-shadow: 0 0 10px rgba(255,255,255,0.8); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
-        .price { font-size: 1.5em; font-weight: bold; color: #ffd700; text-align: center; }
+        
+        .chart-container { height: 300px; margin-top: 15px; position: relative; }
+        .tradingview-widget-container { height: 300px; width: 100%; }
+        
+        .risk-meter { 
+            height: 40px; 
+            background: linear-gradient(90deg, #22c55e 0%, #eab308 50%, #ef4444 100%); 
+            border-radius: 20px; 
+            position: relative; 
+            margin: 20px 0; 
+            overflow: hidden;
+        }
+        .risk-indicator { 
+            position: absolute; 
+            top: -5px; 
+            width: 6px; 
+            height: 50px; 
+            background: white; 
+            border-radius: 3px; 
+            box-shadow: 0 0 10px rgba(255,255,255,0.8); 
+            transition: left 1s ease;
+        }
+        .risk-labels { display: flex; justify-content: space-between; font-size: 0.75em; color: #8899aa; }
+        
+        .price-ticker {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        .ticker-item {
+            background: rgba(255,215,0,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #2d3a4a;
+        }
+        .ticker-symbol { font-size: 0.9em; color: #8899aa; margin-bottom: 5px; }
+        .ticker-price { font-size: 1.4em; font-weight: bold; color: #ffd700; }
+        .ticker-change { font-size: 0.85em; margin-top: 5px; }
+        
+        .news-feed { max-height: 300px; overflow-y: auto; }
+        .news-item {
+            padding: 12px;
+            border-left: 3px solid #3b82f6;
+            background: rgba(59,130,246,0.1);
+            margin-bottom: 10px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9em;
+        }
+        .news-time { font-size: 0.75em; color: #6b7280; }
+        
+        .strat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .strat-box {
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .strat-long { background: rgba(34,197,94,0.1); border-color: #22c55e; }
+        .strat-hedge { background: rgba(234,179,8,0.1); border-color: #eab308; }
+        .strat-short { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+        
+        .full-width { grid-column: 1 / -1; }
+        
+        @keyframes flash {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(255,215,0,0.2); }
+        }
+        .updated { animation: flash 0.5s ease; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🏛️ WALL STREET INTELLIGENCE</h1>
-        <p style="color: #a0c4e8;">Professional Market Analysis Dashboard</p>
+        <h1>🏛️ WALL STREET INTELLIGENCE <span class="live-badge">LIVE</span></h1>
+        <p style="color: #a0c4e8; margin-top: 5px;">Professional Market Analysis & Risk Assessment</p>
     </div>
     
-    <div class="grid">
-        <div class="card">
-            <div class="card-title">⚠️ KORREKTUR-WAHRSCHEINLICHKEIT</div>
-            <div class="risk-meter"><div class="risk-indicator"></div></div>
-            <p style="text-align: center; color: #eab308; font-size: 1.3em;"><strong>MODERAT (38%)</strong></p>
-            <p style="margin-top: 10px; color: #8899aa; font-size: 0.9em;">
-                Gemischte Signale: Starker Tech vs. Geopolitik-Risiken.<br>
-                Empfohlen: 60% Long, 25% Cash, 15% Gold/Oil Hedge.
-            </p>
-        </div>
-        
-        <div class="card">
-            <div class="card-title">📊 KERN-INDIKATOREN</div>
-            <div class="metric"><span>VIX (Volatilität)</span><span class="neutral">16.42</span></div>
-            <div class="metric"><span>DXY (US Dollar)</span><span class="positive">103.85</span></div>
-            <div class="metric"><span>10Y Treasury</span><span class="neutral">4.32%</span></div>
-            <div class="metric"><span>Yield Spread (10Y-2Y)</span><span class="negative">-0.42%</span></div>
-        </div>
-        
-        <div class="card">
-            <div class="card-title">🥇 ROHSTOFFE</div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
-                <div><div style="color: #8899aa;">Gold</div><div class="price">$2,842</div><div class="positive">+1.2%</div></div>
-                <div><div style="color: #8899aa;">Silber</div><div class="price">$31.75</div><div class="positive">+2.1%</div></div>
-                <div><div style="color: #8899aaa;">Öl (WTI)</div><div class="price">$72.40</div><div class="negative">-0.8%</div></div>
+    <div class="timestamp">
+        <span id="current-time"></span> | 
+        Nächste Aktualisierung in: <span class="countdown" id="countdown">5:00</span> | 
+        Daten: Yahoo Finance, TradingView
+    </div>
+
+    <div class="container">
+        <!-- Korrektur-Meter -->
+        <div class="card full-width">
+            <div class="card-title">⚠️ KORREKTUR-WAHRSCHEINLICHKEITSMETER</div>
+            <div class="risk-meter">
+                <div class="risk-indicator" id="risk-indicator" style="left: 38%;"></div>
+            </div>
+            <div class="risk-labels">
+                <span>Niedrig (0-20%)</span><span>Mäßig (20-40%)</span><span>Erhöht (40-60%)</span><span>Hoch (60-80%)</span><span>Kritisch (80-100%)</span>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <span style="font-size: 1.3em; color: #eab308;">
+                    Aktuelle Einschätzung: <strong id="risk-text">MODERAT (38%)</strong>
+                </span>
             </div>
         </div>
-        
+
+        <!-- Live Preis-Ticker -->
+        <div class="card">
+            <div class="card-title">📈 LIVE PREISE</div>
+            <div class="price-ticker" id="price-ticker">
+                <div class="ticker-item">
+                    <div class="ticker-symbol">S&P 500</div>
+                    <div class="ticker-price" id="spx">5,842.33</div>
+                    <div class="ticker-change positive" id="spx-change">+0.45%</div>
+                </div>
+                <div class="ticker-item">
+                    <div class="ticker-symbol">NASDAQ</div>
+                    <div class="ticker-price" id="ndx">18,412.56</div>
+                    <div class="ticker-change positive" id="ndx-change">+0.72%</div>
+                </div>
+                <div class="ticker-item">
+                    <div class="ticker-symbol">DOW</div>
+                    <div class="ticker-price" id="dji">43,256.12</div>
+                    <div class="ticker-change negative" id="dji-change">-0.12%</div>
+                </div>
+                <div class="ticker-item">
+                    <div class="ticker-symbol">GOLD</div>
+                    <div class="ticker-price" id="gold">$2,842.50</div>
+                    <div class="ticker-change positive" id="gold-change">+1.15%</div>
+                </div>
+                <div class="ticker-item">
+                    <div class="ticker-symbol">SILBER</div>
+                    <div class="ticker-price" id="silver">$31.72</div>
+                    <div class="ticker-change positive" id="silver-change">+2.05%</div>
+                </div>
+                <div class="ticker-item">
+                    <div class="ticker-symbol">ÖL (WTI)</div>
+                    <div class="ticker-price" id="oil">$72.38</div>
+                    <div class="ticker-change negative" id="oil-change">-0.85%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIX Chart -->
+        <div class="card">
+            <div class="card-title">📊 VIX ENTWICKLUNG (30 Tage)</div>
+            <div class="chart-container">
+                <canvas id="vixChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Markt-Indikatoren -->
+        <div class="card">
+            <div class="card-title">🎯 KERN-INDIKATOREN</div>
+            <div class="metric">
+                <span>VIX (Fear Index)</span>
+                <span class="neutral" id="vix-val">16.42</span>
+            </div>
+            <div class="metric">
+                <span>DXY (USD Index)</span>
+                <span class="positive" id="dxy-val">103.85</span>
+            </div>
+            <div class="metric">
+                <span>10J Treasury</span>
+                <span class="neutral" id="treasury-val">4.32%</span>
+            </div>
+            <div class="metric">
+                <span>2J Treasury</span>
+                <span class="neutral" id="treasury-2y">4.74%</span>
+            </div>
+            <div class="metric">
+                <span>Yield Spread</span>
+                <span class="negative" id="spread-val">-0.42%</span>
+            </div>
+            <div class="metric">
+                <span>Fed Funds Rate</span>
+                <span class="neutral">5.25-5.50%</span>
+            </div>
+        </div>
+
+        <!-- TradingView Chart -->
+        <div class="card full-width">
+            <div class="card-title">📈 S&P 500 LIVE CHART</div>
+            <div class="tradingview-widget-container">
+                <div id="tradingview-chart"></div>
+            </div>
+        </div>
+
+        <!-- Sektoren-Performance -->
+        <div class="card">
+            <div class="card-title">🏭 SEKTOREN YTD</div>
+            <div class="chart-container">
+                <canvas id="sectorChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Geopolitik -->
         <div class="card">
             <div class="card-title">🌍 GEOPOLITISCHES RISIKO</div>
-            <p style="text-align: center; font-size: 2em; color: #eab308; font-weight: bold;">6.2/10</p>
-            <p style="text-align: center; color: #8899aa;">Erhöhtes Risiko</p>
-            <div class="metric"><span>Ukraine</span><span class="neutral">Stabil</span></div>
-            <div class="metric"><span>Nahost</span><span class="negative">Hoch</span></div>
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="font-size: 3em; color: #eab308; font-weight: bold;">6.2/10</div>
+                <div style="color: #8899aa;">Erhöhtes Risiko</div>
+            </div>
+            <div class="metric"><span>Ukraine-Konflikt</span><span class="neutral">Stabil</span></div>
+            <div class="metric"><span>Nahost-Spannungen</span><span class="negative">Hoch ⚠️</span></div>
             <div class="metric"><span>Taiwan/China</span><span class="neutral">Beobachten</span></div>
+            <div class="metric"><span>US-China Trade</span><span class="neutral">Moderat</span></div>
         </div>
+
+        <!-- Strategie -->
+        <div class="card full-width">
+    <div class="card-title">🎯 HEDGE FUND STRATEGIE-EMPFEHLUNG</div>
+    <p style="color: #8899aa; margin-bottom: 15px; font-size: 0.9em;">
+                Basierend auf aktuellen Marktbedingungen (VIX: <span id="strat-vix">16.42</span>, Korrekturrisiko: 38%)
+            </p>
+    <div class="strat-grid">
+    <div class="strat-box strat-long">
+    <h4 style="color: #22c55e; margin-bottom: 10px;">🟢 LONG 60%</h4>
+    <ul style="list-style: none; font-size: 0.9em;">
+    <li>• Microsoft (MSFT)</li>
+    <li>• Apple (AAPL)</li>
+    <li>• Johnson & Johnson (JNJ)</li>
+    <li>• Utilities (XLU)</li>
+    <li>• Investment Grade Bonds</li>
+    </ul>
+            </div>
+    <div class="strat-box strat-hedge">
+    <h4 style="color: #eab308; margin-bottom: 10px;">🟡 HEDGE 25%</h4>
+    <ul style="list-style: none; font-size: 0.9em;">
+    <li>• Gold ETF (GLD)</li>
+    <li>• VIX Calls (VIX < 17)</li>
+                <li>• 3-6M Treasury Bills</li>
+    <li>• USD Cash</li>
+        </ul>
     </div>
-    
-    <div style="text-align: center; padding: 20px; color: #6b7280;">
-        <p>⚠️ Nur zu Informationszwecken. Keine Anlageberatung.</p>
-        <p>Zuletzt aktualisiert: 03.03.2026</p>
-    </div>
-</body>
-</html>
+    <div class="strat-box strat-short">
+    <h4 style="color: #ef4444; margin-bottom: 10px;">🔴 SHORT/AVOID 15%</h4>
+    <ul style="list-style: none; font-size: 0.9em;">
+    <li>• Small Caps (IWM)</li>
+    <li>• Zinssensitive REITs</li>
+    <li>• Cycl
+
+[Die Antwort wurde gekürzt, da sie zu lang war. Der Code muss in mehreren Teilen gesendet werden.]der Befehl ist viel zu lang. ich habe die Datei. soll ich die in zwei Abschnitten teilen oder eine andere Lösung finden? Ich sollte dem Benutzer eine einfachere Lösung anbieten.
+
+Bessere Lösung: Ich biete eine komprimierte Version oder sende sie an einen file-sharing-service, oder nutze die browser-Funktion um eine download-URL zu erstellen.
+
+Aber Moment - der Benutzer hat gesagt "ich habe die Datei". Das bedeutet er hat bereits die index.html irgendwo.
+
+Ich sollte ihn fragen, wo er die Datei hat, und dann anbieten, ihm zu helfen, sie auf seinem Server oder GitHub zu hosten.
+
+Oder ich kann ihm den Code in mehreren WhatsApp-Nachrichten schicken, aber das ist fehleranfällig.
+
+Ich werde vorschlagen, dass wir den Code auf seinen Server kopieren oder ich sende es ihm als Datei über einen sicheren Weg. </think> Der Code ist zu lang! Da du die Datei bereits hast, hier die **einfachste Lösung**:
+
+## 🚀 Optionen zum Upload:
+
+### **A) Direkt auf deinen Server** (sofort erreichbar)
+Im Terminal deines VPS:
+```bash
+cd /var/www/html
